@@ -6,8 +6,15 @@ from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.math import assert_le
 from starkware.cairo.common.signature import verify_ecdsa_signature
 
+from lib.helper.common import Cheatcode, Helper
+
+struct Signature:
+    member r : felt
+    member s : felt
+end
+
 @contract_interface
-namespace ERC20:
+namespace TOKEN:
     func total_supply() -> (totalSupply : felt):
     end
 
@@ -26,192 +33,241 @@ namespace ERC20:
     func transfer(recipient : felt, amount : felt) -> (success : felt):
     end
 
+    func transfer_from(sender : felt, recipient : felt, amount : felt) -> (success : felt):
+    end
+
     func allowance(owner : felt, spender : felt) -> (remaining : felt):
     end
 
+    func approve(spender: felt, amount: felt) -> (success: felt):
+    end
+
     func delegate_approve(
-        spender : felt, amount : felt, owner : felt, message : felt, owner_signature : (felt, felt)
+         owner : felt, spender : felt, allowance : felt, message : felt, owner_signature : Signature
     ) -> (success : felt):
     end
 end
 
-func before{syscall_ptr : felt*, range_check_ptr}() -> (contract_address : felt):
+const ACCOUNT_INIT_BALANCE = 2000
+
+@external
+func __setup__{syscall_ptr : felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> ():
     %{
-        from starkware.crypto.signature.signature import (
-            private_to_stark_key, 
-        )
+        context.contract = {
+            "minter": 0,
+            "address": 0
+        }
 
-        private_key = 12345
-        owner = private_to_stark_key(private_key)
+        context.accounts = [
+            181218,
+            12345    
+        ]
 
-        start_prank(owner)
-    %}
+        context.contract["minter"] = 3314416161471744589729114412533623747627160421759877225912647569974596485346
+
+        context.contract["address"] = deploy_contract("./src/token/erc20x.cairo", {
+            "name" : "TIMETOKEN",
+            "symbol": "TIME",
+            "decimals": 18,
+            "initial_supply": 100000000,
+            "recipient": context.contract["minter"]
+        }).contract_address
+    %}  
+
+    __setup_account__()
+
+    return ()
+end
+
+func __setup_account__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}():
 
     alloc_locals
 
-    local contract_address : felt
+    local accounts: felt*
 
-    let (caller_addr) = get_caller_address()
-    let token_name = 'TIMETOKEN'
-    let token_symbol = 'TIME'
+    tempvar token_address
+    tempvar minter
 
     %{
-        args = [
-            ids.token_name,
-            ids.token_symbol,
-            18,
-            500000,
-            ids.caller_addr
-        ]
+        from starkware.crypto.signature.signature import private_to_stark_key
 
-        ids.contract_address = deploy_contract("./src/token/erc20x.cairo", args).contract_address
+        ids.token_address = context.contract['address']
+        ids.minter = context.contract['minter']
+
+        ids.accounts = accounts = segments.add()
+
+        for i, sk in enumerate(context.accounts):
+            public_address = private_to_stark_key(sk)
+            memory[accounts + i] = public_address
+
+        stop_prank = start_prank(ids.minter, ids.token_address)
+    %}
+    
+    TOKEN.transfer(
+        token_address,
+        accounts[0],
+        ACCOUNT_INIT_BALANCE
+    )
+
+    TOKEN.transfer(
+        token_address,
+        accounts[1],
+        ACCOUNT_INIT_BALANCE
+    )
+
+    %{ stop_prank() %}
+
+    let (balance1) = TOKEN.balance_of(
+        token_address,
+        accounts[0]
+    )
+
+    let (balance2) = TOKEN.balance_of(
+        token_address,
+        accounts[1]
+    )
+
+    let (minter_balance) = TOKEN.balance_of(
+        token_address,
+        minter
+    )
+
+    assert minter_balance = 100000000 - ACCOUNT_INIT_BALANCE * 2
+    assert balance1 = ACCOUNT_INIT_BALANCE
+    assert balance2 = ACCOUNT_INIT_BALANCE
+
+    %{
+        print("-------------------------------------------")
+        print(f"Account funded with 2000 tokens :- ")
+        print(f"1. {memory[accounts]}")
+        print(f"2. {memory[accounts + 1]}")
     %}
 
-    return (contract_address)
+    return ()
+end
+
+@external
+func test_setup{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    return ()
 end
 
 @external
 func test_create_contract{syscall_ptr : felt*, range_check_ptr}():
-    let (contract_address) = before()
+    tempvar minter 
+    tempvar contract_address
 
-    let (caller) = get_caller_address()
+    %{ 
+        ids.minter = context.contract['minter']
+        ids.contract_address = context.contract['address'] 
+    %}
 
-    let (total_supply) = ERC20.total_supply(contract_address)
-    let (name) = ERC20.name(contract_address)
-    let (symbol) = ERC20.symbol(contract_address)
-    let (decimals) = ERC20.decimals(contract_address)
-    let (balance) = ERC20.balance_of(contract_address, caller)
+    let (total_supply) = TOKEN.total_supply(contract_address)
+    let (name) = TOKEN.name(contract_address)
+    let (symbol) = TOKEN.symbol(contract_address)
+    let (decimals) = TOKEN.decimals(contract_address)
 
     assert decimals = 18
     assert symbol = 'TIME'
-    assert balance = 1000
     assert name = 'TIMETOKEN'
-    assert total_supply = 1000
+    assert total_supply = 100000000
 
     return ()
 end
 
 @external
 func test_transfer{syscall_ptr : felt*, range_check_ptr}():
-    let (contract_address) = before()
-    let (caller) = get_caller_address()
+    let transfer_amount = 100
+
+    tempvar sender
+    tempvar recipient
+    tempvar contract_address
 
     %{
-        start_prank(
-                   caller_address=123,
-                   target_contract_address=ids.contract_address
-               )
+        from starkware.crypto.signature.signature import private_to_stark_key
+
+        ids.contract_address = context.contract['address']
+
+        sender_sk = context.accounts[0]
+        ids.sender = private_to_stark_key(sender_sk)
+        
+        recipient_sk = context.accounts[1]
+        ids.recipient = private_to_stark_key(recipient_sk)
+
+        start_prank(ids.sender, ids.contract_address)
     %}
 
-    ERC20.transfer(contract_address=contract_address, recipient=321, amount=20)
+    TOKEN.transfer(contract_address=contract_address, recipient=recipient, amount=transfer_amount)
 
-    let (recipient_balance) = ERC20.balance_of(contract_address=contract_address, account=321)
+    let (recipient_balance) = TOKEN.balance_of(contract_address=contract_address, account=recipient)
 
-    let (sender_balance) = ERC20.balance_of(contract_address=contract_address, account=caller)
+    let (sender_balance) = TOKEN.balance_of(contract_address=contract_address, account=sender)
 
-    assert recipient_balance = 20
-    assert sender_balance = 1000 - 20
+    assert recipient_balance = ACCOUNT_INIT_BALANCE + transfer_amount
+    assert sender_balance = ACCOUNT_INIT_BALANCE - transfer_amount
 
     return ()
 end
 
 @external
-func test_delegate_approve{syscall_ptr : felt*, range_check_ptr}():
-    alloc_locals
+func test_transfer_with_insufficient_balance{syscall_ptr : felt*, range_check_ptr}():
+    let transfer_amount = 10000000000000000000
 
-    local owner
-    local message_hash
-    local signature : (felt, felt)
-
-    let (local contract_address) = before()
-
-    let message = 'collatz conjecture'
+    tempvar sender
+    tempvar recipient
+    tempvar contract_address
 
     %{
-        from starkware.crypto.signature.signature import (
-            pedersen_hash, private_to_stark_key, sign
-        )
+        from starkware.crypto.signature.signature import private_to_stark_key
 
-        private_key = 12345
-        message_hash = pedersen_hash(ids.message)
-        signature = sign(message_hash, private_key)
+        ids.contract_address = context.contract['address']
 
-        # create starknet key from private_key
-        ids.owner = private_to_stark_key(private_key)
-        ids.message_hash = message_hash  
+        sender_sk = context.accounts[0]
+        ids.sender = private_to_stark_key(sender_sk)
+        
+        recipient_sk = context.accounts[1]
+        ids.recipient = private_to_stark_key(recipient_sk)
 
-        memory[(fp + 2)] = signature[0]
-        memory[(fp + 2) + 1] = signature[1]
-
-        # ids.signature[0] = signature[0]
-        # ids.signature[1] = signature[1]
-
-        print(f'Public key : {ids.owner}')
-        print(f'Message hash : {message_hash}')
-        print("Signature :- ")
-        print(f'\tr: {signature[0]}')
-        print(f'\ts: {signature[1]}')
+        start_prank(ids.sender, ids.contract_address)
     %}
 
-    let spender = 321
-    let allowance = 69420
+    %{ expect_revert(error_message="ERC20: transfer amount exceeds balance") %}
 
-    ERC20.delegate_approve(
-        contract_address=contract_address,
-        spender=spender,
-        amount=allowance,
-        owner=owner,
-        message=message_hash,
-        owner_signature=signature,
-    )
-
-    let (approved_allowance) = ERC20.allowance(contract_address, owner, spender)
-
-    assert allowance = approved_allowance
+    TOKEN.transfer(contract_address=contract_address, recipient=recipient, amount=transfer_amount)
 
     return ()
 end
 
 @external
-func test_delegate_approve_with_invalid_sign{
-    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
-}():
-    alloc_locals
+func test_approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    let amount = 100
 
-    local owner
-    local message_hash
-    local fake_signature : (felt, felt)
-
-    let (local contract_address) = before()
-
-    let message = 'amogus'
+    tempvar owner
+    tempvar spender
+    tempvar contract_address
 
     %{
-        from starkware.crypto.signature.signature import (
-            pedersen_hash, private_to_stark_key, sign
-        )
+        from starkware.crypto.signature.signature import private_to_stark_key
 
-        # address of the true owner of the token to be approved
-        private_key = 12345
-        ids.owner = private_to_stark_key(private_key)
-
-        # create a fake key for the invalid sign
-        sk = 999
-        ids.message_hash = pedersen_hash(ids.message)
-        signature = sign(ids.message_hash, sk)
-
-        memory[(fp + 2)] = signature[0]
-        memory[(fp + 2) + 1] = signature[1]
+        ids.contract_address = context.contract['address']
+        ids.owner = private_to_stark_key(context.accounts[0])
+        ids.spender = private_to_stark_key(context.accounts[1])
     %}
 
-    let spender = 321
-    let allowance = 69420
-
-    %{ expect_revert(error_message="Invalid signature") %}
-
-    ERC20.delegate_approve(
-        contract_address, spender, allowance, owner, message_hash, fake_signature
+    Cheatcode.start_prank_on_contract(owner,  contract_address)
+    
+    TOKEN.approve(
+        contract_address,
+        spender,
+        amount
     )
+
+    let (allowance) = TOKEN.allowance(
+        contract_address,
+        owner,
+        spender
+    )
+
+    assert allowance = amount
 
     return ()
 end
