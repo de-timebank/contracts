@@ -5,11 +5,17 @@ protostar_version = "0.3.2"
 libs_path = "lib"
 
 ["protostar.shared_command_configs"]
-cairo-path = ["./lib/cairo_contracts/src"]
+cairo-path = [
+    "./lib/cairo_contracts/src",
+    "./lib/helper"
+]
 
 ["protostar.contracts"]
 main = [
     "src/main.cairo",
+]
+erc20x = [
+    "src/token/erc20x.cairo"
 ]
 
 [profile.devnet.protostar.deploy]
