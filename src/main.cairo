@@ -24,7 +24,11 @@ namespace TOKEN:
     end
 
     func delegate_approve(
-        spender : felt, amount : felt, owner : felt, message : felt, owner_signature : Signature
+        owner : felt,
+        spender : felt, 
+        amount : felt, 
+        message : felt, 
+        owner_signature : Signature
     ) -> (success : felt):
     end
 
@@ -86,14 +90,14 @@ func create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     # end
 
     # let (caller) = get_caller_address()
-    let (owner) = _owner.read()
+    let (contract_owner) = _owner.read()
 
     # approve `amount` of allowance to server`s contract account
     TOKEN.delegate_approve(
         contract_address=token_address,
-        spender=owner,
-        amount=amount,
         owner=requestor,
+        spender=contract_owner,
+        amount=amount,
         message=message,
         owner_signature=requestor_signature,
     )

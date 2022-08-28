@@ -253,13 +253,17 @@ func test_approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
         ids.spender = private_to_stark_key(context.accounts[1])
     %}
 
-    Cheatcode.start_prank_on_contract(owner,  contract_address)
+    # Cheatcode.start_prank_on_contract(owner,  contract_address)
+
+    %{ stop_prank = start_prank(ids.owner,  ids.contract_address) %}
     
     TOKEN.approve(
         contract_address,
         spender,
         amount
     )
+
+    %{ stop_prank() %}
 
     let (allowance) = TOKEN.allowance(
         contract_address,
@@ -268,6 +272,63 @@ func test_approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     )
 
     assert allowance = amount
+
+    return ()
+end
+
+@external
+func test_spend_allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    test_approve()
+
+    let amount = 100
+    let recipient = 987654321
+
+    tempvar owner
+    tempvar contract_address
+
+    %{
+        from starkware.crypto.signature.signature import private_to_stark_key
+
+        ids.contract_address = context.contract['address']
+        ids.owner = private_to_stark_key(context.accounts[0])
+    %}
+
+    let (owner_balance_before) = TOKEN.balance_of(
+        contract_address,
+        owner
+    )
+
+    let (recipient_balance_before) = TOKEN.balance_of(
+        contract_address,
+        recipient
+    )
+
+    %{ 
+        spender = private_to_stark_key(context.accounts[1])
+        stop_prank = start_prank(spender, ids.contract_address) 
+    %}
+
+    TOKEN.transfer_from(
+        contract_address,
+        owner,
+        recipient,
+        amount
+    )
+
+    %{ stop_prank() %}
+
+    let (recipient_balance) = TOKEN.balance_of(
+        contract_address,
+        recipient
+    )
+
+    let (owner_balance) = TOKEN.balance_of(
+        contract_address,
+        owner
+    )
+
+    assert owner_balance = owner_balance_before - amount
+    assert recipient_balance = recipient_balance_before + amount
 
     return ()
 end

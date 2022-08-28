@@ -5,6 +5,7 @@
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
 from starkware.cairo.common.bool import TRUE
+from starkware.cairo.common.math import assert_not_zero
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.signature import verify_ecdsa_signature
 
@@ -125,7 +126,7 @@ end
 @external
 func delegate_approve{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, ecdsa_ptr : SignatureBuiltin*
-}(owner : felt, spender : felt, allowance : felt, message : felt, owner_signature : Signature) -> (
+}(owner : felt, spender : felt, amount : felt, message : felt, owner_signature : Signature) -> (
     success : felt
 ):
     with_attr error_message("TOKEN: UNAUTHORIZED FOR DELEGATE APPROVE"):
@@ -137,7 +138,7 @@ func delegate_approve{
         )
     end
 
-    ERC20._approve(owner, spender, allowance)
+    ERC20._approve(owner, spender, amount)
 
     return (TRUE)
 end

@@ -256,10 +256,7 @@ func _test_create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
         ids.owner = context.contract['owner']
     %}
 
-    Cheatcode.start_prank_on_contract(
-        owner,
-        contract_address
-    )
+    %{ stop_prank = start_prank(ids.owner, ids.contract_address) %}
 
     Main.create_commitment(
         contract_address,
@@ -271,6 +268,8 @@ func _test_create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
         requestor_signature,
         provider_signature
     )
+
+    %{ stop_prank() %}
 
     let (owner_allowance) = TOKEN.allowance(
         token_address,
@@ -294,15 +293,36 @@ func test_complete_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
     test_create_commitment()
 
     local contract_address
+    local token_address
     local owner
     
     %{
         ids.contract_address = context.contract['address']
+        ids.token_address = context.contract['token_address']
         ids.owner = context.contract['owner']
     %}
 
     let (message) = Helper.pedersen_hash('field elements')
     let (local requestor_signature: Signature) = Helper.sign(ACCOUNT_1_SK, message)
+
+
+    let (commitment: ServiceCommitment) = Main.get_commitment_of(
+        contract_address,
+        request_id
+    )
+
+    let (spender_allowance_before) = TOKEN.allowance(
+        token_address,
+        commitment.requestor,
+        owner
+    )
+
+    let (provider_balance_before) = TOKEN.balance_of(
+        token_address,
+        commitment.provider
+    )
+
+    %{ stop_prank = start_prank(context.contract['owner'], context.contract['address']) %}
     
     Main.complete_commitment(
         contract_address,
@@ -311,12 +331,22 @@ func test_complete_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
         requestor_signature
     )
 
-    let (commitment: ServiceCommitment) = Main.get_commitment_of(
-        contract_address,
-        request_id
+    %{ stop_prank() %}
+
+    let (spender_allowance) = TOKEN.allowance(
+        token_address,
+        commitment.requestor,
+        owner
     )
 
-    assert commitment.is_completed = TRUE
+    let (provider_balance) = TOKEN.balance_of(
+        token_address,
+        commitment.provider
+    )
+
+    assert commitment.is_completed  + 1 = TRUE
+    assert provider_balance = provider_balance_before + commitment.amount
+    assert spender_allowance = spender_allowance_before - commitment.amount
 
     return ()
 end

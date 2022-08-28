@@ -5,7 +5,7 @@
 
 from starkware.starknet.common.syscalls import get_caller_address
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_not_zero, assert_lt, assert_nn, assert_le_felt
+from starkware.cairo.common.math import assert_not_zero, assert_lt, assert_nn, assert_le_felt, assert_not_equal
 from starkware.cairo.common.bitwise import ALL_ONES
 from starkware.cairo.common.bool import FALSE
 from starkware.cairo.common.uint256 import Uint256, uint256_check, uint256_eq, uint256_not
@@ -308,31 +308,18 @@ namespace ERC20:
     func _spend_allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         owner : felt, spender : felt, amount : felt
     ):
-        alloc_locals
-        # with_attr error_message("ERC20: amount is not a valid Uint256"):
-        #     uint256_check(amount) # almost surely not needed, might remove after confirmation
-        # end
-
         let (current_allowance) = ERC20_allowances.read(owner, spender)
-        # let (infinite:          Uint256) = uint256_not(Uint256(0, 0))
-        # let (is_infinite:       felt   ) = uint256_eq(current_allowance, infinite)
 
         with_attr error_message("ERC20: allowance is infinite"):
-            assert ALL_ONES = current_allowance
+            assert_not_equal(current_allowance, ALL_ONES)
         end
 
-        # if is_infinite == FALSE:
         with_attr error_message("ERC20: insufficient allowance"):
-            # let (new_allowance: Uint256) = SafeUint256.sub_le(current_allowance, amount)
-
             assert_le_felt(amount, current_allowance)
             let new_allowance = current_allowance - amount
         end
 
         _approve(owner, spender, new_allowance)
         return ()
-        # end
-
-        # return ()
     end
 end
