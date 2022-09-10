@@ -43,8 +43,7 @@ namespace TOKEN:
     end
 
     func delegate_approve(
-         owner : felt, spender : felt, allowance : felt, message : felt, owner_signature : Signature
-    ) -> (success : felt):
+         owner : felt, spender : felt, allowance : felt) -> (success : felt):
     end
 end
 

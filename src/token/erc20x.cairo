@@ -125,18 +125,18 @@ end
 #
 @external
 func delegate_approve{
-    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, ecdsa_ptr : SignatureBuiltin*
-}(owner : felt, spender : felt, amount : felt, message : felt, owner_signature : Signature) -> (
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
+}(owner : felt, spender : felt, amount : felt) -> (
     success : felt
 ):
-    with_attr error_message("TOKEN: UNAUTHORIZED FOR DELEGATE APPROVE"):
-        verify_ecdsa_signature(
-            message=message,
-            public_key=owner,
-            signature_r=owner_signature.r,
-            signature_s=owner_signature.s,
-        )
-    end
+    # with_attr error_message("TOKEN: UNAUTHORIZED FOR DELEGATE APPROVE"):
+    #     verify_ecdsa_signature(
+    #         message=message,
+    #         public_key=owner,
+    #         signature_r=owner_signature.r,
+    #         signature_s=owner_signature.s,
+    #     )
+    # end
 
     ERC20._approve(owner, spender, amount)
 

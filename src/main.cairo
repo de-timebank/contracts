@@ -11,10 +11,6 @@ struct Signature:
     member s : felt
 end
 
-#
-# 	Constructor
-#
-
 @contract_interface
 namespace TOKEN:
     func balance_of(account : felt) -> (balance : felt):
@@ -24,11 +20,7 @@ namespace TOKEN:
     end
 
     func delegate_approve(
-        owner : felt,
-        spender : felt, 
-        amount : felt, 
-        message : felt, 
-        owner_signature : Signature
+        owner : felt, spender : felt, amount : felt
     ) -> (success : felt):
     end
 
@@ -57,6 +49,10 @@ end
 func _time_token_address() -> (address):
 end
 
+#
+# 	Constructor
+#
+
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     owner, token_address
@@ -72,9 +68,6 @@ func create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     requestor : felt,
     provider : felt,
     amount : felt,
-    message : felt,
-    requestor_signature : Signature,
-    provider_signature : Signature,
 ) -> (bool):
     _owner_only()
 
@@ -98,8 +91,6 @@ func create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
         owner=requestor,
         spender=contract_owner,
         amount=amount,
-        message=message,
-        owner_signature=requestor_signature,
     )
 
     # create new commitment

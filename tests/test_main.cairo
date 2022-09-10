@@ -14,9 +14,6 @@ namespace Main:
         requestor : felt,
         provider : felt,
         amount : felt,
-        message : felt,
-        requestor_signature : Signature,
-        provider_signature : Signature,
     ) -> (bool):
     end
 
@@ -77,8 +74,8 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 
         print("Contract   | Address")
-        print("MAIN       | ", contract["address"])
-        print("TIMETOKEN  | ", contract["token_address"])
+        print("MAIN       | ", hex(contract["address"]))
+        print("TIMETOKEN  | ", hex(contract["token_address"]))
 
         context.contract = contract
         
@@ -185,64 +182,55 @@ func test_create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
     let (message) = Helper.pedersen_hash('field elements')
 
     let (local requestor) = Helper.create_address(ACCOUNT_1_SK)
-    let (local req_sign: Signature) = Helper.sign(ACCOUNT_1_SK, message)
+    # let (local req_sign: Signature) = Helper.sign(ACCOUNT_1_SK, message)
 
     let (local provider) = Helper.create_address(ACCOUNT_2_SK)
-    let (local prov_sign: Signature) = Helper.sign(ACCOUNT_2_SK, message)
+    # let (local prov_sign: Signature) = Helper.sign(ACCOUNT_2_SK, message)
 
     _test_create_commitment(
         request_id,
         requestor,
         provider,
         amount,
-        message,
-        req_sign,
-        prov_sign
     )
     
     return ()    
 end
 
-@external
-func test_create_commitment_with_invalid_signature{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+# @external
+# func test_create_commitment_with_invalid_signature{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     
-):  
-    let amount = 690
-    let request_id = 1
+# ):  
+#     let amount = 690
+#     let request_id = 1
 
-    alloc_locals 
+#     alloc_locals 
 
-    let (message) = Helper.pedersen_hash('field elements')
+#     let (message) = Helper.pedersen_hash('field elements')
 
-    let (local requestor) = Helper.create_address(ACCOUNT_1_SK)
-    let (local req_sign: Signature) = Helper.sign(123123, message)
+#     let (local requestor) = Helper.create_address(ACCOUNT_1_SK)
+#     let (local req_sign: Signature) = Helper.sign(123123, message)
 
-    let (local provider) = Helper.create_address(ACCOUNT_2_SK)
-    let (local prov_sign: Signature) = Helper.sign(ACCOUNT_2_SK, message)
+#     let (local provider) = Helper.create_address(ACCOUNT_2_SK)
+#     let (local prov_sign: Signature) = Helper.sign(ACCOUNT_2_SK, message)
 
-    %{ expect_revert(error_message="TOKEN: UNAUTHORIZED FOR DELEGATE APPROVE") %}
+#     %{ expect_revert(error_message="TOKEN: UNAUTHORIZED FOR DELEGATE APPROVE") %}
 
-    _test_create_commitment(
-        request_id,
-        requestor,
-        provider,
-        amount,
-        message,
-        req_sign,
-        prov_sign
-    )
+#     _test_create_commitment(
+#         request_id,
+#         requestor,
+#         provider,
+#         amount,
+#     )
     
-    return ()
-end
+#     return ()
+# end
 
 func _test_create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     request_id,
     requestor,
     provider,
     amount,
-    message,
-    requestor_signature: Signature,
-    provider_signature: Signature
 ):
     alloc_locals
 
@@ -264,9 +252,6 @@ func _test_create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
         requestor,
         provider,
         amount,
-        message,
-        requestor_signature,
-        provider_signature
     )
 
     %{ stop_prank() %}
