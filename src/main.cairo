@@ -49,6 +49,11 @@ end
 func _time_token_address() -> (address):
 end
 
+@storage_var
+func _commitment_is_exists(request_id) -> (bool):
+end
+
+
 #
 # 	Constructor
 #
@@ -70,7 +75,7 @@ func create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     amount : felt,
 ) -> (bool):
     _owner_only()
-
+    
     # check if requestor has enough balance
     with_attr error_message("MAIN: REQUESTOR BALANCE IS INSUFFICIENT"):
         let (token_address) = _time_token_address.read()
@@ -100,26 +105,28 @@ func create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 
     _service_commitment.write(request_id, new_commitment)
 
+    _commitment_is_exists.write(request_id, TRUE)
+
     return (TRUE)
 end
 
 @external
 func complete_commitment{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, ecdsa_ptr : SignatureBuiltin*
-}(request_id : felt, message : felt, requestor_signature : Signature) -> (bool):
+}(request_id : felt) -> (bool):
     alloc_locals
 
     let (commitment : ServiceCommitment) = get_commitment_of(request_id)
 
     # verify signature
-    with_attr error_message("MAIN: UNAUTHORIZED DUE TO INVALID SIGNATURE"):
-        verify_ecdsa_signature(
-            message=message,
-            public_key=commitment.requestor,
-            signature_r=requestor_signature.r,
-            signature_s=requestor_signature.s,
-        )
-    end
+    # with_attr error_message("MAIN: UNAUTHORIZED DUE TO INVALID SIGNATURE"):
+    #     verify_ecdsa_signature(
+    #         message=message,
+    #         public_key=commitment.requestor,
+    #         signature_r=requestor_signature.r,
+    #         signature_s=requestor_signature.s,
+    #     )
+    # end
 
     # set service state to TRUE
     let new_commitment = ServiceCommitment(

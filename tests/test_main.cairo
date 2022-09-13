@@ -17,7 +17,7 @@ namespace Main:
     ) -> (bool):
     end
 
-    func complete_commitment(request_id : felt, message : felt, requestor_signature : Signature) -> (bool):
+    func complete_commitment(request_id : felt) -> (bool):
     end
 
     func get_commitment_of(request_id : felt) -> (commitment : ServiceCommitment):
@@ -179,7 +179,7 @@ func test_create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
 
     alloc_locals 
 
-    let (message) = Helper.pedersen_hash('field elements')
+    # let (message) = Helper.pedersen_hash('field elements')
 
     let (local requestor) = Helper.create_address(ACCOUNT_1_SK)
     # let (local req_sign: Signature) = Helper.sign(ACCOUNT_1_SK, message)
@@ -287,8 +287,8 @@ func test_complete_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
         ids.owner = context.contract['owner']
     %}
 
-    let (message) = Helper.pedersen_hash('field elements')
-    let (local requestor_signature: Signature) = Helper.sign(ACCOUNT_1_SK, message)
+    # let (message) = Helper.pedersen_hash('field elements')
+    # let (local requestor_signature: Signature) = Helper.sign(ACCOUNT_1_SK, message)
 
 
     let (commitment: ServiceCommitment) = Main.get_commitment_of(
@@ -312,8 +312,8 @@ func test_complete_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
     Main.complete_commitment(
         contract_address,
         request_id,
-        message,
-        requestor_signature
+        # message,
+        # requestor_signature
     )
 
     %{ stop_prank() %}

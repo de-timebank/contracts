@@ -18,5 +18,6 @@ erc20x = [
     "src/token/erc20x.cairo"
 ]
 
-[profile.devnet.protostar.deploy]
+["profile.devnet.protostar.deploy"]
 gateway_url = "http://127.0.0.1:5050/"
+chain_id = 1536727068981429685321
