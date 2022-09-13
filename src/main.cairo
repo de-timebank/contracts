@@ -75,6 +75,7 @@ func create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     amount : felt,
 ) -> (bool):
     _owner_only()
+    _check_if_commitment_exist(request_id)
     
     # check if requestor has enough balance
     with_attr error_message("MAIN: REQUESTOR BALANCE IS INSUFFICIENT"):
@@ -189,5 +190,13 @@ func _owner_only{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
         assert caller = owner
     end
 
+    return ()
+end
+
+func _check_if_commitment_exist{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(request_id):
+    with_attr error_message("MAIN: COMMITMENT OF REQUEST ID `{request_id}` ALREADY EXISTS"):
+        let (is_exist) = _commitment_is_exists.read(request_id)
+        assert is_exist = FALSE
+    end
     return ()
 end

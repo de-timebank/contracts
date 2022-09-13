@@ -197,6 +197,36 @@ func test_create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
     return ()    
 end
 
+@external
+func test_fail_create_commitment_with_existing_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+):
+    alloc_locals 
+    
+    test_create_commitment()
+    
+    let amount = 90
+    let request_id = 1
+
+    # let (message) = Helper.pedersen_hash('field elements')
+
+    let (local requestor) = Helper.create_address(ACCOUNT_1_SK)
+    # let (local req_sign: Signature) = Helper.sign(ACCOUNT_1_SK, message)
+
+    let (local provider) = Helper.create_address(ACCOUNT_2_SK)
+    # let (local prov_sign: Signature) = Helper.sign(ACCOUNT_2_SK, message)
+
+    %{ expect_revert(error_message="MAIN: COMMITMENT OF REQUEST ID `1` ALREADY EXISTS")%}
+
+    _test_create_commitment(
+        request_id,
+        requestor,
+        provider,
+        amount,
+    )
+
+    return ()   
+end
+
 # @external
 # func test_create_commitment_with_invalid_signature{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     
