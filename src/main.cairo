@@ -19,8 +19,8 @@ namespace TOKEN:
     func approve(spender : felt, amount : felt) -> (success : felt):
     end
 
-    func delegate_approve(
-        owner : felt, spender : felt, amount : felt
+    func approve_to_operator(
+        owner : felt, amount : felt
     ) -> (success : felt):
     end
 
@@ -75,27 +75,22 @@ func create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     amount : felt,
 ) -> (bool):
     _owner_only()
+
     _check_if_commitment_exist(request_id)
     
     # check if requestor has enough balance
-    with_attr error_message("MAIN: REQUESTOR BALANCE IS INSUFFICIENT"):
+    with_attr error_message("OPERATOR: REQUESTOR BALANCE IS INSUFFICIENT"):
         let (token_address) = _time_token_address.read()
         let (balance) = TOKEN.balance_of(contract_address=token_address, account=requestor)
         assert_le_felt(amount, balance)
     end
 
-    # with_attr error_message("SERVICE REQUEST: INVALID SIGNATURE FOR PROVIDER"):
-    #     verify_ecdsa_signature()
-    # end
-
-    # let (caller) = get_caller_address()
-    let (contract_owner) = _owner.read()
+    # let (operator_address) = get_contract_address()
 
     # approve `amount` of allowance to server`s contract account
-    TOKEN.delegate_approve(
+    TOKEN.approve_to_operator(
         contract_address=token_address,
         owner=requestor,
-        spender=contract_owner,
         amount=amount,
     )
 
@@ -117,17 +112,13 @@ func complete_commitment{
 }(request_id : felt) -> (bool):
     alloc_locals
 
+    _owner_only()
+
     let (commitment : ServiceCommitment) = get_commitment_of(request_id)
 
-    # verify signature
-    # with_attr error_message("MAIN: UNAUTHORIZED DUE TO INVALID SIGNATURE"):
-    #     verify_ecdsa_signature(
-    #         message=message,
-    #         public_key=commitment.requestor,
-    #         signature_r=requestor_signature.r,
-    #         signature_s=requestor_signature.s,
-    #     )
-    # end
+    with_attr error_message("OPERATOR: SERVICE COMMITMENT HAS ALREADY BEEN COMPLETED"):
+        assert commitment.is_completed = FALSE
+    end
 
     # set service state to TRUE
     let new_commitment = ServiceCommitment(
@@ -184,7 +175,7 @@ end
 #
 
 func _owner_only{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    with_attr error_message("SERVICE REQUEST : CALLER IS NOT THE CONTRACT OWNER"):
+    with_attr error_message("OPERATOR: CALLER IS NOT THE CONTRACT OWNER"):
         let (caller) = get_caller_address()
         let (owner) = _owner.read()
         assert caller = owner
@@ -194,7 +185,7 @@ func _owner_only{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 func _check_if_commitment_exist{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(request_id):
-    with_attr error_message("MAIN: COMMITMENT OF REQUEST ID `{request_id}` ALREADY EXISTS"):
+    with_attr error_message("OPERATOR: COMMITMENT OF REQUEST ID {request_id} ALREADY EXISTS"):
         let (is_exist) = _commitment_is_exists.read(request_id)
         assert is_exist = FALSE
     end

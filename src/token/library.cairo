@@ -288,10 +288,6 @@ namespace ERC20:
     func _approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         owner : felt, spender : felt, amount : felt
     ):
-        # with_attr error_message("ERC20: amount is not a valid Uint256"):
-        #     uint256_check(amount)
-        # end
-
         with_attr error_message("ERC20: cannot approve from the zero address"):
             assert_not_zero(owner)
         end
@@ -314,7 +310,7 @@ namespace ERC20:
             assert_not_equal(current_allowance, ALL_ONES)
         end
 
-        with_attr error_message("ERC20: insufficient allowance"):
+        with_attr error_message("ERC20: insufficient allowance. Spender : {spender}"):
             assert_le_felt(amount, current_allowance)
             let new_allowance = current_allowance - amount
         end

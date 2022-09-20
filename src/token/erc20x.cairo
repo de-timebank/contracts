@@ -4,7 +4,7 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
-from starkware.cairo.common.bool import TRUE
+from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.math import assert_not_zero
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.signature import verify_ecdsa_signature
@@ -18,10 +18,20 @@ struct Signature:
     member s : felt
 end
 
+@storage_var
+func _owner() -> (address):
+end
+
+@storage_var
+func _operator() -> (address):
+end
+
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    name : felt, symbol : felt, decimals : felt, initial_supply : felt, recipient : felt
+    owner: felt, name : felt, symbol : felt, decimals : felt, initial_supply : felt, recipient : felt
 ):
+    _owner.write(owner)
+
     ERC20.initializer(name, symbol, decimals)
     ERC20._mint(recipient, initial_supply)
     return ()
@@ -75,6 +85,12 @@ func allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     return (remaining)
 end
 
+@view
+func get_operator{syscall_ptr : felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (address):
+    let (operator) = _operator.read()
+    return (operator)
+end
+
 #
 # Externals
 #
@@ -124,21 +140,39 @@ end
 # token provided a signature is given (signature of the owner of the token to be approved)
 #
 @external
-func delegate_approve{
+func approve_to_operator{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
-}(owner : felt, spender : felt, amount : felt) -> (
+}(owner : felt, amount : felt) -> (
     success : felt
 ):
-    # with_attr error_message("TOKEN: UNAUTHORIZED FOR DELEGATE APPROVE"):
-    #     verify_ecdsa_signature(
-    #         message=message,
-    #         public_key=owner,
-    #         signature_r=owner_signature.r,
-    #         signature_s=owner_signature.s,
-    #     )
-    # end
+    let (caller) = get_caller_address()
 
-    ERC20._approve(owner, spender, amount)
+    with_attr error_message("TIMETOKEN: ONLY OPERATOR CAN CALL THIS FUNCTION"):
+        let (operator) = _operator.read() 
+        assert operator = caller
+    end
+
+    ERC20._approve(owner, caller, amount)
 
     return (TRUE)
+end
+
+@external
+func set_operator_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    address
+):  
+    with_attr error_message("TIMETOKEN: ONLY OWNER CAN CALL THIS FUNCTION"):
+        let (caller) = get_caller_address()
+        let (owner) = _owner.read()
+        assert caller = owner
+    end
+
+    with_attr error_message("TIMETOKEN: OPERATOR ADDRESS HAS ALREADY BEEN SET"):
+        let (operator) = _operator.read()
+        assert operator = FALSE
+    end
+
+    _operator.write(address)
+
+    return ()
 end
