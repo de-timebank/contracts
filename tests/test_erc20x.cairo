@@ -42,8 +42,8 @@ namespace TOKEN:
     func approve(spender: felt, amount: felt) -> (success: felt):
     end
 
-    func delegate_approve(
-         owner : felt, spender : felt, allowance : felt) -> (success : felt):
+    func approve_to_operator(
+         owner : felt, amount : felt) -> (success : felt):
     end
 end
 
@@ -65,6 +65,7 @@ func __setup__{syscall_ptr : felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
         context.contract["minter"] = 3314416161471744589729114412533623747627160421759877225912647569974596485346
 
         context.contract["address"] = deploy_contract("./src/token/erc20x.cairo", {
+            "owner": 12345,
             "name" : "TIMETOKEN",
             "symbol": "TIME",
             "decimals": 18,
