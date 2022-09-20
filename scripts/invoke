@@ -1,0 +1,3 @@
+#! /usr/bin/env bash
+
+starknet-invoke --abi /home/kari/project/sync/timebank-backend/contracts/build/$1_abi.json ${@:2}
