@@ -1,17 +1,11 @@
 %lang starknet
 
-from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
-from starkware.starknet.common.syscalls import get_caller_address
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.math import assert_le
-from starkware.cairo.common.signature import verify_ecdsa_signature
+from starkware.starknet.common.syscalls import get_caller_address
+from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
 
 from lib.helper.common import Cheatcode, Helper
-
-struct Signature:
-    member r : felt
-    member s : felt
-end
 
 @contract_interface
 namespace TOKEN:
@@ -64,7 +58,7 @@ func __setup__{syscall_ptr : felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 
         context.contract["minter"] = 3314416161471744589729114412533623747627160421759877225912647569974596485346
 
-        context.contract["address"] = deploy_contract("./src/token/erc20x.cairo", {
+        context.contract["address"] = deploy_contract("./src/TimeToken.cairo", {
             "owner": 12345,
             "name" : "TIMETOKEN",
             "symbol": "TIME",

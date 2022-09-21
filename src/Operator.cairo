@@ -1,15 +1,9 @@
 %lang starknet
 
+from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.math import assert_nn, assert_le_felt
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
-from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.starknet.common.syscalls import get_contract_address, get_caller_address
-from starkware.cairo.common.signature import verify_ecdsa_signature
-
-struct Signature:
-    member r : felt
-    member s : felt
-end
 
 @contract_interface
 namespace TOKEN:
@@ -33,8 +27,6 @@ struct ServiceCommitment:
     member provider : felt
     member amount : felt
     member is_completed : felt
-    # member requestor_signature: felt
-    # member provider_signature: felt
 end
 
 @storage_var
@@ -75,19 +67,19 @@ func create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     amount : felt,
 ) -> (bool):
     _owner_only()
-
-    _check_if_commitment_exist(request_id)
     
-    # check if requestor has enough balance
-    with_attr error_message("OPERATOR: REQUESTOR BALANCE IS INSUFFICIENT"):
+    with_attr error_message("OPERATOR: Commitment for request ID `{request_id}` already exists."):
+        let (is_exist) = _commitment_is_exists.read(request_id)
+        assert is_exist = FALSE 
+    end
+    
+    with_attr error_message("OPERATOR: Requestor balance is insufficient."):
         let (token_address) = _time_token_address.read()
         let (balance) = TOKEN.balance_of(contract_address=token_address, account=requestor)
         assert_le_felt(amount, balance)
     end
 
-    # let (operator_address) = get_contract_address()
-
-    # approve `amount` of allowance to server`s contract account
+    # approve `amount` of allowance to operator address (this contract) 
     TOKEN.approve_to_operator(
         contract_address=token_address,
         owner=requestor,
@@ -100,7 +92,6 @@ func create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     )
 
     _service_commitment.write(request_id, new_commitment)
-
     _commitment_is_exists.write(request_id, TRUE)
 
     return (TRUE)
@@ -114,9 +105,14 @@ func complete_commitment{
 
     _owner_only()
 
+    with_attr error_message("OPERATOR: Service commitment does not exist."):
+        let (is_exist) = _commitment_is_exists.read(request_id)
+        assert is_exist = TRUE
+    end
+
     let (commitment : ServiceCommitment) = get_commitment_of(request_id)
 
-    with_attr error_message("OPERATOR: SERVICE COMMITMENT HAS ALREADY BEEN COMPLETED"):
+    with_attr error_message("OPERATOR: Service commitment has already been completed."):
         assert commitment.is_completed = FALSE
     end
 
@@ -175,19 +171,10 @@ end
 #
 
 func _owner_only{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    with_attr error_message("OPERATOR: CALLER IS NOT THE CONTRACT OWNER"):
+    with_attr error_message("OPERATOR: Caller is not contract owner."):
         let (caller) = get_caller_address()
         let (owner) = _owner.read()
         assert caller = owner
-    end
-
-    return ()
-end
-
-func _check_if_commitment_exist{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(request_id):
-    with_attr error_message("OPERATOR: COMMITMENT OF REQUEST ID {request_id} ALREADY EXISTS"):
-        let (is_exist) = _commitment_is_exists.read(request_id)
-        assert is_exist = FALSE
     end
     return ()
 end

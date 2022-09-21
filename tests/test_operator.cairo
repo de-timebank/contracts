@@ -1,10 +1,10 @@
 %lang starknet
 
-from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
-from src.main import Signature, ServiceCommitment
+from src.Operator import ServiceCommitment
 from lib.helper.common import Helper, Cheatcode
 
 @contract_interface
@@ -70,7 +70,7 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
         contract["owner"] = 3314416161471744589729114412533623747627160421759877225912647569974596485346
 
-        ids.token_address = contract["token_address"] = deploy_contract("./src/token/erc20x.cairo", {
+        ids.token_address = contract["token_address"] = deploy_contract("./src/TimeToken.cairo", {
             "owner": contract["owner"],
             "name" : "TIMETOKEN",
             "symbol": "TIME",
@@ -79,7 +79,7 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
             "recipient": contract["owner"]
         }).contract_address
 
-        ids.operator_address = contract["address"] = deploy_contract("./src/main.cairo", 
+        ids.operator_address = contract["address"] = deploy_contract("./src/Operator.cairo", 
         {
             "owner": contract["owner"],
             "token_address": contract["token_address"]
@@ -237,7 +237,7 @@ func test_fail_create_commitment_with_existing_id{syscall_ptr : felt*, pedersen_
     let (local requestor) = Helper.create_address(ACCOUNT_1_SK)
     let (local provider) = Helper.create_address(ACCOUNT_2_SK)
 
-    %{ expect_revert(error_message=f"OPERATOR: COMMITMENT OF REQUEST ID {ids.request_id} ALREADY EXISTS")%}
+    %{ expect_revert(error_message=f"OPERATOR: Commitment for request ID `{ids.request_id}` already exists.")%}
 
     _test_create_commitment(
         request_id,
@@ -316,7 +316,7 @@ func test_fail_complete_already_completed_commitment{syscall_ptr : felt*, peders
 
     test_complete_commitment()
 
-    %{ expect_revert(error_message="OPERATOR: SERVICE COMMITMENT HAS ALREADY BEEN COMPLETED") %}
+    %{ expect_revert(error_message="OPERATOR: Service commitment has already been completed.") %}
 
     _complete_commitment(request_id)
 

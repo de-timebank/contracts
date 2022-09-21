@@ -3,20 +3,12 @@
 
 %lang starknet
 
-from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.math import assert_not_zero
-from starkware.cairo.common.uint256 import Uint256
-from starkware.cairo.common.signature import verify_ecdsa_signature
-
 from starkware.starknet.common.syscalls import get_caller_address
+from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
 
-from src.token.library import ERC20
-
-struct Signature:
-    member r : felt
-    member s : felt
-end
+from src.token.ERC20_felt import ERC20
 
 @storage_var
 func _owner() -> (address):
@@ -31,7 +23,6 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     owner: felt, name : felt, symbol : felt, decimals : felt, initial_supply : felt, recipient : felt
 ):
     _owner.write(owner)
-
     ERC20.initializer(name, symbol, decimals)
     ERC20._mint(recipient, initial_supply)
     return ()
@@ -135,10 +126,11 @@ func decrease_allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     return (TRUE)
 end
 
-#
-# Approve through a proxy (third party) account i.e., approving someone else's
-# token provided a signature is given (signature of the owner of the token to be approved)
-#
+# Only operator can call this function,
+# this allow operator to approve `owner`'s token for itself
+# 
+# Should put owner's signature verification 
+# 
 @external
 func approve_to_operator{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
@@ -147,7 +139,7 @@ func approve_to_operator{
 ):
     let (caller) = get_caller_address()
 
-    with_attr error_message("TIMETOKEN: ONLY OPERATOR CAN CALL THIS FUNCTION"):
+    with_attr error_message("TIMETOKEN: Only operator can call this function."):
         let (operator) = _operator.read() 
         assert operator = caller
     end
@@ -161,13 +153,13 @@ end
 func set_operator_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     address
 ):  
-    with_attr error_message("TIMETOKEN: ONLY OWNER CAN CALL THIS FUNCTION"):
+    with_attr error_message("TIMETOKEN: Only owner can call this function."):
         let (caller) = get_caller_address()
         let (owner) = _owner.read()
         assert caller = owner
     end
 
-    with_attr error_message("TIMETOKEN: OPERATOR ADDRESS HAS ALREADY BEEN SET"):
+    with_attr error_message("TIMETOKEN: Operator address has already been set."):
         let (operator) = _operator.read()
         assert operator = FALSE
     end
