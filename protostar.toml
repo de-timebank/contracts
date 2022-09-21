@@ -11,11 +11,11 @@ cairo-path = [
 ]
 
 ["protostar.contracts"]
-main = [
-    "src/main.cairo",
+Operator = [
+    "src/Operator.cairo",
 ]
-erc20x = [
-    "src/token/erc20x.cairo"
+TimeToken = [
+    "src/TimeToken.cairo"
 ]
 
 ["profile.devnet.protostar.deploy"]

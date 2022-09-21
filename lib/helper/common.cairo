@@ -1,6 +1,9 @@
 %lang starknet
 
-from src.main import Signature
+struct Signature:
+    member r : felt
+    member s : felt
+end
 
 namespace Helper:
     func sign(private_key, message_hash) -> (signature: Signature):
