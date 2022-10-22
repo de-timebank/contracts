@@ -1,0 +1,3 @@
+build
+tests/test_random.cairo
+script.sh

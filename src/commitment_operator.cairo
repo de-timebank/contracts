@@ -5,6 +5,11 @@ from starkware.cairo.common.math import assert_nn, assert_le_felt
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
 from starkware.starknet.common.syscalls import get_contract_address, get_caller_address
 
+struct Signature:
+    member r: felt
+    member s: felt
+end
+
 @contract_interface
 namespace TOKEN:
     func balance_of(account : felt) -> (balance : felt):
@@ -13,14 +18,17 @@ namespace TOKEN:
     func approve(spender : felt, amount : felt) -> (success : felt):
     end
 
-    func approve_to_operator(
-        owner : felt, amount : felt
-    ) -> (success : felt):
+    func approve_to_operator(owner : felt, amount : felt) -> (success : felt):
     end
 
     func transfer_from(sender : felt, recipient : felt, amount : felt) -> (success : felt):
     end
+
+    func mint(recipient : felt, amount : felt) -> (success : felt):
+    end
 end
+
+const NEW_USER_MINT_AMOUNT = 20
 
 struct ServiceCommitment:
     member requestor : felt
@@ -42,9 +50,12 @@ func _time_token_address() -> (address):
 end
 
 @storage_var
-func _commitment_is_exists(request_id) -> (bool):
+func _is_commitment_exists(request_id) -> (bool):
 end
 
+@storage_var
+func _is_user_registered(address : felt) -> (bool):
+end
 
 #
 # 	Constructor
@@ -61,30 +72,23 @@ end
 
 @external
 func create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    request_id : felt,
-    requestor : felt,
-    provider : felt,
-    amount : felt,
+    request_id : felt, requestor : felt, provider : felt, amount : felt
 ) -> (bool):
     _owner_only()
-    
-    with_attr error_message("OPERATOR: Commitment for request ID `{request_id}` already exists."):
-        let (is_exist) = _commitment_is_exists.read(request_id)
-        assert is_exist = FALSE 
+
+    with_attr error_message("OPERATOR: Commitment for that service request already exists."):
+        let (is_exist) = _is_commitment_exists.read(request_id)
+        assert is_exist = FALSE
     end
-    
+
     with_attr error_message("OPERATOR: Requestor balance is insufficient."):
         let (token_address) = _time_token_address.read()
         let (balance) = TOKEN.balance_of(contract_address=token_address, account=requestor)
         assert_le_felt(amount, balance)
     end
 
-    # approve `amount` of allowance to operator address (this contract) 
-    TOKEN.approve_to_operator(
-        contract_address=token_address,
-        owner=requestor,
-        amount=amount,
-    )
+    # approve `amount` of allowance to operator address (this contract)
+    TOKEN.approve_to_operator(contract_address=token_address, owner=requestor, amount=amount)
 
     # create new commitment
     let new_commitment = ServiceCommitment(
@@ -92,7 +96,7 @@ func create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     )
 
     _service_commitment.write(request_id, new_commitment)
-    _commitment_is_exists.write(request_id, TRUE)
+    _is_commitment_exists.write(request_id, TRUE)
 
     return (TRUE)
 end
@@ -106,7 +110,7 @@ func complete_commitment{
     _owner_only()
 
     with_attr error_message("OPERATOR: Service commitment does not exist."):
-        let (is_exist) = _commitment_is_exists.read(request_id)
+        let (is_exist) = _is_commitment_exists.read(request_id)
         assert is_exist = TRUE
     end
 
@@ -127,7 +131,6 @@ func complete_commitment{
     _service_commitment.write(request_id, new_commitment)
 
     # transfer `amount` to `provider`
-
     let (token_address) = get_token_address()
 
     TOKEN.transfer_from(
@@ -138,6 +141,24 @@ func complete_commitment{
     )
 
     return (TRUE)
+end
+
+@external
+func mint_for_new_user{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    recipient : felt
+):
+    _owner_only()
+    
+    with_attr error_message("OPERATOR: User is already registered."):
+        let (is_new) = _is_user_registered.read(recipient)
+        assert is_new = FALSE
+    end
+
+    let (token_address) = _time_token_address.read()
+    TOKEN.mint(contract_address=token_address, recipient=recipient, amount=NEW_USER_MINT_AMOUNT)
+
+    _is_user_registered.write(recipient, TRUE)
+    return ()
 end
 
 #

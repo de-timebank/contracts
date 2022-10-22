@@ -6,8 +6,7 @@ libs_path = "lib"
 
 ["protostar.shared_command_configs"]
 cairo-path = [
-    "./lib/cairo_contracts/src",
-    "./lib/helper"
+    "./lib/open_zeppelin/src/",
 ]
 
 ["protostar.contracts"]
@@ -17,7 +16,10 @@ Operator = [
 TimeToken = [
     "src/TimeToken.cairo"
 ]
+MyContract = [
+    "src/MyContract.cairo"
+]
 
-["profile.devnet.protostar.deploy"]
+["profile.devnet.protostar.shared_command_configs"]
 gateway_url = "http://127.0.0.1:5050/"
 chain_id = 1536727068981429685321

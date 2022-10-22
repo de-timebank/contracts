@@ -8,7 +8,7 @@ from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
 
-from src.token.ERC20_felt import ERC20
+from openzeppelin.access.ownable.library import Ownable
 
 @storage_var
 func _owner() -> (address):
@@ -20,7 +20,12 @@ end
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    owner: felt, name : felt, symbol : felt, decimals : felt, initial_supply : felt, recipient : felt
+    owner : felt,
+    name : felt,
+    symbol : felt,
+    decimals : felt,
+    initial_supply : felt,
+    recipient : felt,
 ):
     _owner.write(owner)
     ERC20.initializer(name, symbol, decimals)
@@ -77,7 +82,7 @@ func allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 end
 
 @view
-func get_operator{syscall_ptr : felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (address):
+func get_operator{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (address):
     let (operator) = _operator.read()
     return (operator)
 end
@@ -126,21 +131,29 @@ func decrease_allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     return (TRUE)
 end
 
+@external
+func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    recipient : felt, amount : felt
+) -> (success : felt):
+    _operator_only()
+
+    ERC20._mint(recipient, amount)
+    return (TRUE)
+end
+
 # Only operator can call this function,
 # this allow operator to approve `owner`'s token for itself
-# 
-# Should put owner's signature verification 
-# 
+#
+# Should put owner's signature verification
+#
 @external
-func approve_to_operator{
-    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
-}(owner : felt, amount : felt) -> (
-    success : felt
-):
+func approve_to_operator{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    owner : felt, amount : felt
+) -> (success : felt):
     let (caller) = get_caller_address()
 
     with_attr error_message("TIMETOKEN: Only operator can call this function."):
-        let (operator) = _operator.read() 
+        let (operator) = _operator.read()
         assert operator = caller
     end
 
@@ -152,7 +165,7 @@ end
 @external
 func set_operator_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     address
-):  
+):
     with_attr error_message("TIMETOKEN: Only owner can call this function."):
         let (caller) = get_caller_address()
         let (owner) = _owner.read()
@@ -166,5 +179,18 @@ func set_operator_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, rang
 
     _operator.write(address)
 
+    return ()
+end
+
+#
+# Internal
+#
+
+func _operator_only{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    with_attr error_message("TIMETOKEN: Only operator can call this function."):
+        let (caller) = get_caller_address()
+        let (operator) = _operator.read()
+        assert caller = operator
+    end
     return ()
 end

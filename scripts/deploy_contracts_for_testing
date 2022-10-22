@@ -1,0 +1,21 @@
+#! /usr/bin/env bash
+
+operator_contract_owner=0x1f801022ab0deb6b98c94c9daaec770da7d17f962ad8cde34dddab58c0c18ce
+token_contract_address=0
+account_to_be_prefunded=0x7c4d7ff0b3eca8a7a95a69b46938ea06f2d5b321e132c71c39405279dad4d26
+
+function deploy_token_contract {
+  local name=$(cairo-cast TIMETOKEN)
+  local symbol=$(cairo-cast TIME)
+  token_contract_address=$(protostar -p devnet deploy ./build/TimeToken.json --inputs $operator_contract_owner $name $symbol 18 100000000 $operator_contract_owner 2>&1 | grep "Contract address")
+}
+
+function deploy_operator_contract {
+  protostar -p devnet deploy ./build/Operator.json --inputs $operator_contract_owner ${token_contract_address/Contract address: /}
+}
+
+function fund_account {
+  ./scripts/invoke TimeToken --address ${token_contract_address/Contract address: /} --function transfer --inputs $account_to_be_prefunded 1000 --account main_contract_owner
+}
+
+deploy_token_contract && deploy_operator_contract && fund_account

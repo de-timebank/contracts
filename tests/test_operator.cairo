@@ -9,12 +9,9 @@ from lib.helper.common import Helper, Cheatcode
 
 @contract_interface
 namespace Main:
-    func create_commitment(
-        request_id : felt,
-        requestor : felt,
-        provider : felt,
-        amount : felt,
-    ) -> (bool):
+    func create_commitment(request_id : felt, requestor : felt, provider : felt, amount : felt) -> (
+        bool
+    ):
     end
 
     func complete_commitment(request_id : felt) -> (bool):
@@ -26,7 +23,10 @@ namespace Main:
     func get_token_address() -> (contract_address : felt):
     end
 
-    func get_owner() -> (address):
+    func get_owner() -> (address : felt):
+    end
+
+    func mint_for_new_user(recipient : felt):
     end
 end
 
@@ -44,7 +44,7 @@ namespace TOKEN:
     func set_operator_address(address):
     end
 
-    func get_operator()  -> (address):
+    func get_operator() -> (address):
     end
 end
 
@@ -52,16 +52,14 @@ const ACCOUNT_1_SK = 181218
 const ACCOUNT_2_SK = 12345
 
 @external
-func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    
-):  
+func __setup__{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     alloc_locals
     local token_address
     local operator_address
-    
+
     let (this) = get_contract_address()
 
-    %{ 
+    %{
         contract = {
             "owner": 0,
             "address": 0,
@@ -92,15 +90,11 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         print("THIS       | ", hex(ids.this))
 
         context.contract = contract
-        
     %}
 
-    %{ stop_prank = start_prank(context.contract["owner"], ids.token_address)%}
+    %{ stop_prank = start_prank(context.contract["owner"], ids.token_address) %}
 
-    TOKEN.set_operator_address(
-        contract_address=token_address,
-        address=operator_address    
-    )
+    TOKEN.set_operator_address(contract_address=token_address, address=operator_address)
 
     %{ stop_prank() %}
 
@@ -109,8 +103,7 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return ()
 end
 
-func __setup_account__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}():
-
+func __setup_account__{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     let amount = 2000
 
     tempvar token_address
@@ -120,42 +113,22 @@ func __setup_account__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         ids.token_address = context.contract['token_address']
         ids.owner = context.contract['owner']
     %}
-    
+
     let (account1) = Helper.create_address(ACCOUNT_1_SK)
     let (account2) = Helper.create_address(ACCOUNT_2_SK)
 
     # Cheatcode.start_prank_on_contract(owner, token_address)
-    
-    %{ stop_prank = start_prank(context.contract["owner"], ids.token_address)%}
 
-    TOKEN.transfer(
-        token_address,
-        account1,
-        amount
-    )
+    %{ stop_prank = start_prank(context.contract["owner"], ids.token_address) %}
 
-    TOKEN.transfer(
-        token_address,
-        account2,
-        amount   
-    )
+    TOKEN.transfer(token_address, account1, amount)
+    TOKEN.transfer(token_address, account2, amount)
 
     %{ stop_prank() %}
 
-    let (balance1) = TOKEN.balance_of(
-        token_address,
-        account1
-    )
-
-    let (balance2) = TOKEN.balance_of(
-        token_address,
-        account2
-    )
-
-    let (owner_balance) = TOKEN.balance_of(
-        token_address,
-        owner
-    )
+    let (balance1) = TOKEN.balance_of(token_address, account1)
+    let (balance2) = TOKEN.balance_of(token_address, account2)
+    let (owner_balance) = TOKEN.balance_of(token_address, owner)
 
     assert owner_balance = 100000000 - amount * 2
     assert balance1 = amount
@@ -172,30 +145,20 @@ func __setup_account__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 end
 
 @external
-func test_deploy_contract{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    
-):  
-    tempvar operator_address 
+func test_deploy_contract{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    tempvar operator_address
     tempvar token_address
     tempvar owner
 
-    %{ 
+    %{
         ids.operator_address = context.contract["address"]
         ids.token_address = context.contract["token_address"] 
         ids.owner = context.contract["owner"]
     %}
 
-    let (_owner) = Main.get_owner(
-        operator_address
-    )
-
-    let (_token_address) = Main.get_token_address(
-        operator_address
-    )
-
-    let (_operator_address) = TOKEN.get_operator(
-        contract_address=token_address
-    )
+    let (_owner) = Main.get_owner(operator_address)
+    let (_token_address) = Main.get_token_address(operator_address)
+    let (_operator_address) = TOKEN.get_operator(contract_address=token_address)
 
     assert owner = _owner
     assert token_address = _token_address
@@ -205,91 +168,69 @@ func test_deploy_contract{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, rang
 end
 
 @external
-func test_create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():  
+func test_create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     let amount = 690
-    let request_id = 0x03d71275146e09c853bdbf180c329a404b27259b4029d66d8c6f38619286a05b 
+    let request_id = 0x03d71275146e09c853bdbf180c329a404b27259b4029d66d8c6f38619286a05b
 
-    alloc_locals 
+    alloc_locals
 
     let (local requestor) = Helper.create_address(ACCOUNT_1_SK)
     let (local provider) = Helper.create_address(ACCOUNT_2_SK)
 
-    _test_create_commitment(
-        request_id,
-        requestor,
-        provider,
-        amount,
-    )
-    
-    return ()    
+    _test_create_commitment(request_id, requestor, provider, amount)
+
+    return ()
 end
 
 @external
-func test_fail_create_commitment_with_existing_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-):
-    alloc_locals 
-    
+func test_fail_create_commitment_with_existing_id{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
+}():
+    alloc_locals
+
     test_create_commitment()
-    
+
     let amount = 90
     let request_id = 0x03d71275146e09c853bdbf180c329a404b27259b4029d66d8c6f38619286a05b
 
     let (local requestor) = Helper.create_address(ACCOUNT_1_SK)
     let (local provider) = Helper.create_address(ACCOUNT_2_SK)
 
-    %{ expect_revert(error_message=f"OPERATOR: Commitment for request ID `{ids.request_id}` already exists.")%}
+    %{ expect_revert(error_message=f"OPERATOR: Commitment for that service request already exists.") %}
 
-    _test_create_commitment(
-        request_id,
-        requestor,
-        provider,
-        amount,
-    )
+    _test_create_commitment(request_id, requestor, provider, amount)
 
-    return ()   
+    return ()
 end
 
 func _test_create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    request_id,
-    requestor,
-    provider,
-    amount,
+    request_id, requestor, provider, amount
 ):
     alloc_locals
 
     local operator_address
     local token_address
     local owner
-    
+
     %{
         ids.operator_address = context.contract['address']
         ids.token_address = context.contract['token_address']
         ids.owner = context.contract['owner']
     %}
 
-    %{ 
+    %{
         operator_stop_prank = start_prank(ids.owner, ids.operator_address)
         token_stop_prank = start_prank(ids.operator_address, ids.token_address)
     %}
 
-    Main.create_commitment(
-        operator_address,
-        request_id,
-        requestor,
-        provider,
-        amount,
-    )
+    Main.create_commitment(operator_address, request_id, requestor, provider, amount)
 
-    %{ 
+    %{
         operator_stop_prank() 
         token_stop_prank()
     %}
 
-    let (operator_allowance) = TOKEN.allowance(
-        token_address,
-        requestor,
-        operator_address 
-    )
+    let (operator_allowance) = TOKEN.allowance(token_address, requestor, operator_address)
 
     assert operator_allowance = amount
 
@@ -297,9 +238,7 @@ func _test_create_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
 end
 
 @external
-func test_complete_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    
-):
+func test_complete_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     let request_id = 0x03d71275146e09c853bdbf180c329a404b27259b4029d66d8c6f38619286a05b
 
     test_create_commitment()
@@ -310,8 +249,9 @@ func test_complete_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
 end
 
 @external
-func test_fail_complete_already_completed_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-):
+func test_fail_complete_already_completed_commitment{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
+}():
     let request_id = 0x03d71275146e09c853bdbf180c329a404b27259b4029d66d8c6f38619286a05b
 
     test_complete_commitment()
@@ -320,7 +260,7 @@ func test_fail_complete_already_completed_commitment{syscall_ptr : felt*, peders
 
     _complete_commitment(request_id)
 
-    return ()  
+    return ()
 end
 
 @external
@@ -330,59 +270,99 @@ func _complete_commitment{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, rang
     alloc_locals
     local operator_address
     local token_address
-    local owner 
-    
+    local owner
+
     %{
         ids.operator_address = context.contract['address']
         ids.token_address = context.contract['token_address']
         ids.owner = context.contract['owner']
     %}
 
-    let (commitment: ServiceCommitment) = Main.get_commitment_of(
-        operator_address,
-        request_id
-    )
+    let (commitment : ServiceCommitment) = Main.get_commitment_of(operator_address, request_id)
 
     let (operator_allowance_before) = TOKEN.allowance(
-        token_address,
-        commitment.requestor,
-        operator_address    
+        token_address, commitment.requestor, operator_address
     )
 
-    let (provider_balance_before) = TOKEN.balance_of(
-        token_address,
-        commitment.provider
-    )
-    
-    %{ 
+    let (provider_balance_before) = TOKEN.balance_of(token_address, commitment.provider)
+
+    %{
         operator_stop_prank = start_prank(ids.owner, ids.operator_address)
         token_stop_prank = start_prank(ids.operator_address, ids.token_address)
     %}
-    
-    Main.complete_commitment(
-        operator_address,
-        request_id
-    )
 
-    %{ 
+    Main.complete_commitment(operator_address, request_id)
+
+    %{
         operator_stop_prank()
         token_stop_prank()
     %}
 
-    let (operator_allowance) = TOKEN.allowance(
-        token_address,
-        commitment.requestor,
-        owner
-    )
-
-    let (provider_balance) = TOKEN.balance_of(
-        token_address,
-        commitment.provider
-    )
+    let (operator_allowance) = TOKEN.allowance(token_address, commitment.requestor, owner)
+    let (provider_balance) = TOKEN.balance_of(token_address, commitment.provider)
 
     assert commitment.is_completed + 1 = TRUE
     assert provider_balance = provider_balance_before + commitment.amount
     assert operator_allowance = operator_allowance_before - commitment.amount
+
+    return ()
+end
+
+@external
+func test_mint_for_new_user{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    alloc_locals
+    local operator_address
+    local token_address
+    local owner
+
+    %{
+        ids.operator_address = context.contract['address']
+        ids.token_address = context.contract['token_address']
+        ids.owner = context.contract['owner']
+    %}
+
+    %{ operator_stop_prank = start_prank(ids.owner, ids.operator_address) %}
+
+    let (local new_user : felt) = Helper.create_address(0x69420)
+
+    Main.mint_for_new_user(operator_address, new_user)
+
+    %{ operator_stop_prank() %}
+
+    let (new_user_balance) = TOKEN.balance_of(token_address, new_user)
+
+    # mint_for_new_user will mint only 20 TIMETOKENs
+    assert new_user_balance = 20
+
+    return ()
+end
+
+@external
+func test_fail_mint_for_registered_user{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
+}():
+    alloc_locals
+    local operator_address
+    local token_address
+    local owner
+
+    test_mint_for_new_user()
+
+    %{
+        ids.operator_address = context.contract['address']
+        ids.token_address = context.contract['token_address']
+        ids.owner = context.contract['owner']
+    %}
+
+    %{ operator_stop_prank = start_prank(ids.owner, ids.operator_address) %}
+
+    let (local new_user : felt) = Helper.create_address(0x69420)
+
+    %{ expect_revert(error_message=f"OPERATOR: User is already registered.") %}
+
+    Main.mint_for_new_user(operator_address, new_user)
+
+    %{ operator_stop_prank() %}
 
     return ()
 end
