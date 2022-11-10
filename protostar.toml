@@ -1,22 +1,12 @@
-["protostar.config"]
-protostar_version = "0.3.2"
+[project]
+protostar-version = "0.7.0"
+lib-path = "lib"
+cairo-path = ["./lib/cairo_contracts/src", "./lib/helper"]
 
-["protostar.project"]
-libs_path = "lib"
+[contracts]
+BudiOperator = ["src/budi_operator.cairo"]
+BudiCredit = ["src/budi_credit.cairo"]
 
-["protostar.shared_command_configs"]
-cairo-path = [
-    "./lib/cairo_contracts/src",
-    "./lib/helper"
-]
-
-["protostar.contracts"]
-main = [
-    "src/main.cairo",
-]
-erc20x = [
-    "src/token/erc20x.cairo"
-]
-
-[profile.devnet.protostar.deploy]
+[profile.devnet.deploy]
 gateway_url = "http://127.0.0.1:5050/"
+chain_id = 1536727068981429685321
